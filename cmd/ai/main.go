@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tenxprotocols/ai-cli/internal/version"
+	"github.com/tenxprotocols/ai-cli/internal/cli"
 )
 
 func main() {
-	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
-		fmt.Printf("ai %s\n", version.Version)
-		return
+	root := cli.NewRoot()
+	if err := root.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "ai: %v\n", err)
+		os.Exit(1)
 	}
-	fmt.Fprintln(os.Stderr, "ai: not yet implemented")
-	os.Exit(2)
 }
