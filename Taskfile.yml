@@ -1,0 +1,54 @@
+version: '3'
+
+vars:
+  MODULE: github.com/tenxprotocols/ai-cli
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  LDFLAGS: -s -w -X {{.MODULE}}/internal/version.Version={{.VERSION}}
+
+tasks:
+  default:
+    cmds:
+      - task: build
+
+  build:
+    desc: Build non-static binary to ./bin/ai
+    sources: ['**/*.go', 'go.mod', 'go.sum']
+    generates: ['./bin/ai']
+    cmds:
+      - CGO_ENABLED=1 go build -trimpath -ldflags="{{.LDFLAGS}}" -o ./bin/ai ./cmd/ai
+
+  build:static:
+    desc: Build static binary to ./bin/ai-static
+    sources: ['**/*.go', 'go.mod', 'go.sum']
+    generates: ['./bin/ai-static']
+    cmds:
+      - CGO_ENABLED=0 go build -trimpath -ldflags="{{.LDFLAGS}}" -o ./bin/ai-static ./cmd/ai
+
+  build:all:
+    deps: [build, build:static]
+
+  test:
+    desc: Run all tests with race detector
+    cmds:
+      - go test -race -count=1 ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  fmt:
+    desc: Format Go files
+    cmds:
+      - gofmt -w -s .
+      - goimports -w .
+
+  install:
+    desc: Install binary and symlinks to $AI_CLI_INSTALL_DIR (default /usr/local/bin)
+    deps: [build]
+    vars:
+      DIR: '{{.AI_CLI_INSTALL_DIR | default "/usr/local/bin"}}'
+    cmds:
+      - install -m 0755 ./bin/ai {{.DIR}}/ai
+      - for name in ai-chat ai-ask ai-config ai-models; do ln -sf {{.DIR}}/ai {{.DIR}}/$name; done
