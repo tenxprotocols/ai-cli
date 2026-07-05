@@ -38,8 +38,7 @@ func NewRoot() *cobra.Command {
 	pf.StringVar(&gf.ConfigPath, "config", "", "config file path (env: AI_CLI_CONFIG)")
 
 	root.AddCommand(newVersionCmd())
-	root.AddCommand(newAskCmd())
+	root.AddCommand(newAskCmd(gf))
 	root.AddCommand(newConfigCmd(gf))
-	// Further subcommands registered in later tasks.
 	return root
 }

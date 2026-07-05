@@ -43,6 +43,29 @@ func Render(f Format, w io.Writer, ch <-chan providers.Chunk) error {
 	}
 }
 
+// FromResponse converts a complete Response into a chunk stream so all
+// rendering goes through one path.
+func FromResponse(resp providers.Response) <-chan providers.Chunk {
+	ch := make(chan providers.Chunk, 8)
+	go func() {
+		defer close(ch)
+		for _, m := range resp.Messages {
+			for _, p := range m.Content {
+				if p.Type == providers.PartText && p.Text != "" {
+					ch <- providers.Chunk{Type: providers.ChunkTextDelta, Text: p.Text}
+				}
+			}
+			for _, tc := range m.ToolCalls {
+				ch <- providers.Chunk{Type: providers.ChunkToolCallStart, ToolCall: &tc}
+			}
+		}
+		usage := resp.Usage
+		ch <- providers.Chunk{Type: providers.ChunkUsage, Usage: &usage}
+		ch <- providers.Chunk{Type: providers.ChunkMessageStop, StopReason: resp.StopReason}
+	}()
+	return ch
+}
+
 func renderText(w io.Writer, ch <-chan providers.Chunk) error {
 	last, toolCalls := "", 0
 	for c := range ch {
