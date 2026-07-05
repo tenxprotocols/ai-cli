@@ -79,11 +79,12 @@ type Usage struct {
 }
 
 type Chunk struct {
-	Type     string    `json:"type"`
-	Text     string    `json:"text,omitempty"`
-	ToolCall *ToolCall `json:"tool_call,omitempty"`
-	Usage    *Usage    `json:"usage,omitempty"`
-	Err      error     `json:"-"`
+	Type       string    `json:"type"`
+	Text       string    `json:"text,omitempty"`
+	ToolCall   *ToolCall `json:"tool_call,omitempty"`
+	Usage      *Usage    `json:"usage,omitempty"`
+	StopReason string    `json:"stop_reason,omitempty"` // set on message_stop
+	Err        error     `json:"-"`
 }
 
 type Request struct {
