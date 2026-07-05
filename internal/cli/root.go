@@ -41,5 +41,7 @@ func NewRoot() *cobra.Command {
 	root.AddCommand(newAskCmd(gf))
 	root.AddCommand(newShellCmd(gf))
 	root.AddCommand(newConfigCmd(gf))
+	root.AddCommand(newModelsCmd(gf))
+	root.AddCommand(newProfileCmd(gf))
 	return root
 }
