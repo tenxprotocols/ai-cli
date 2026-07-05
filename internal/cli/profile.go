@@ -38,7 +38,7 @@ func newProfileListCmd(flags *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List profiles",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			_, file, err := loadConfig(flags)
 			if err != nil {
 				return err
@@ -100,7 +100,7 @@ func newProfileUseCmd(flags *GlobalFlags) *cobra.Command {
 		Use:   "use <name>",
 		Short: "Set the default profile",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			path, file, err := loadConfig(flags)
 			if err != nil {
 				return err
@@ -120,7 +120,7 @@ func newProfileCreateCmd(flags *GlobalFlags) *cobra.Command {
 		Use:   "create <name>",
 		Short: "Create a profile",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			path, file, err := loadConfig(flags)
 			if err != nil {
 				return err
@@ -166,7 +166,7 @@ func newProfileRmCmd(flags *GlobalFlags) *cobra.Command {
 		Use:   "rm <name>",
 		Short: "Remove a profile",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			path, file, err := loadConfig(flags)
 			if err != nil {
 				return err

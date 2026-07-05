@@ -23,7 +23,7 @@ func newModelsCmd(flags *GlobalFlags) *cobra.Command {
 		Use:   "models",
 		Short: "List models from configured providers",
 		Long:  "List models from configured providers. Filter with --provider.",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			format, err := output.ParseFormat(flags.Format)
 			if err != nil {
 				return err

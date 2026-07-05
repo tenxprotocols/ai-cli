@@ -96,7 +96,7 @@ func (o *openAI) Stream(ctx context.Context, req Request) (<-chan Chunk, error) 
 	body := o.body(req)
 	body["stream"] = true
 	body["stream_options"] = map[string]any{"include_usage": true}
-	resp, err := send(ctx, "POST", o.baseURL+"/chat/completions", o.headers(), body)
+	resp, err := send(ctx, "POST", o.baseURL+"/chat/completions", o.headers(), body) //nolint:bodyclose // closed by the streaming goroutine
 	if err != nil {
 		return nil, err
 	}

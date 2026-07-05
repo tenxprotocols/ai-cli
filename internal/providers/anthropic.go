@@ -96,7 +96,7 @@ func (a *anthropic) Complete(ctx context.Context, req Request) (Response, error)
 func (a *anthropic) Stream(ctx context.Context, req Request) (<-chan Chunk, error) {
 	body := a.body(req)
 	body["stream"] = true
-	resp, err := send(ctx, "POST", a.baseURL+"/v1/messages", a.headers(), body)
+	resp, err := send(ctx, "POST", a.baseURL+"/v1/messages", a.headers(), body) //nolint:bodyclose // closed by the streaming goroutine
 	if err != nil {
 		return nil, err
 	}

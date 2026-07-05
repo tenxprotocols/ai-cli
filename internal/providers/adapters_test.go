@@ -70,7 +70,7 @@ func TestOpenAI_Complete(t *testing.T) {
 }
 
 func TestOpenAI_Stream(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = w.Write([]byte(
 			"data: {\"choices\":[{\"delta\":{\"content\":\"hel\"}}]}\n\n" +
@@ -105,7 +105,7 @@ func TestOpenAI_ListModels(t *testing.T) {
 }
 
 func TestOpenAI_APIError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(401)
 		_, _ = w.Write([]byte(`{"error":{"message":"bad key"}}`))
 	}))
@@ -157,7 +157,7 @@ func TestAnthropic_Complete(t *testing.T) {
 }
 
 func TestAnthropic_Stream(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = w.Write([]byte(
 			"event: message_start\ndata: {\"message\":{\"usage\":{\"input_tokens\":3}}}\n\n" +
