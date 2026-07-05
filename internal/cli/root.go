@@ -19,7 +19,7 @@ type GlobalFlags struct {
 
 // NewRoot builds the top-level `ai` command.
 func NewRoot() *cobra.Command {
-	gf := &GlobalFlags{}
+	flags := &GlobalFlags{}
 	root := &cobra.Command{
 		Use:           "ai",
 		Short:         "Talk to LLMs from the command line",
@@ -27,21 +27,21 @@ func NewRoot() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	pf := root.PersistentFlags()
-	pf.StringVar(&gf.Profile, "profile", "", "profile name (env: AI_CLI_PROFILE)")
-	pf.StringVar(&gf.Provider, "provider", "", "override provider for this call")
-	pf.StringVar(&gf.Model, "model", "", "override model (verbatim to provider)")
-	pf.StringVar(&gf.Format, "format", "text", "output format: text|json|jsonl")
-	pf.BoolVar(&gf.NoStream, "no-stream", false, "disable streaming")
-	pf.StringVar(&gf.System, "system", "", "system prompt (inline)")
-	pf.StringVar(&gf.SystemFile, "system-file", "", "system prompt from file")
-	pf.StringVar(&gf.ConfigPath, "config", "", "config file path (env: AI_CLI_CONFIG)")
+	persistent := root.PersistentFlags()
+	persistent.StringVar(&flags.Profile, "profile", "", "profile name (env: AI_CLI_PROFILE)")
+	persistent.StringVar(&flags.Provider, "provider", "", "override provider for this call")
+	persistent.StringVar(&flags.Model, "model", "", "override model (verbatim to provider)")
+	persistent.StringVar(&flags.Format, "format", "text", "output format: text|json|jsonl")
+	persistent.BoolVar(&flags.NoStream, "no-stream", false, "disable streaming")
+	persistent.StringVar(&flags.System, "system", "", "system prompt (inline)")
+	persistent.StringVar(&flags.SystemFile, "system-file", "", "system prompt from file")
+	persistent.StringVar(&flags.ConfigPath, "config", "", "config file path (env: AI_CLI_CONFIG)")
 
 	root.AddCommand(newVersionCmd())
-	root.AddCommand(newAskCmd(gf))
-	root.AddCommand(newShellCmd(gf))
-	root.AddCommand(newConfigCmd(gf))
-	root.AddCommand(newModelsCmd(gf))
-	root.AddCommand(newProfileCmd(gf))
+	root.AddCommand(newAskCmd(flags))
+	root.AddCommand(newShellCmd(flags))
+	root.AddCommand(newConfigCmd(flags))
+	root.AddCommand(newModelsCmd(flags))
+	root.AddCommand(newProfileCmd(flags))
 	return root
 }

@@ -24,8 +24,11 @@ func OSEnv(k string) (string, bool) {
 	return "", false
 }
 
-// Overrides holds CLI flag values. Empty strings mean "not set".
+// Overrides holds CLI flag values. Empty strings mean "not set". Command is
+// the subcommand being run; a matching [commands.<name>] block overlays the
+// profile before env vars and flags are applied.
 type Overrides struct {
+	Command  string
 	Profile  string
 	Provider string
 	Model    string
@@ -45,43 +48,65 @@ type Resolved struct {
 	MaxTokens    *int
 }
 
-// Resolve applies precedence: flag > AI_CLI_* env > public env > file.
-func Resolve(f File, o Overrides, env EnvLookup) (Resolved, error) {
-	profileName := firstNonEmpty(o.Profile, envOr(env, "AI_CLI_PROFILE"), f.DefaultProfile)
+// Resolve applies precedence: flag > AI_CLI_* env > public env >
+// [commands.<name>] block > profile.
+func Resolve(file File, overrides Overrides, env EnvLookup) (Resolved, error) {
+	profileName := firstNonEmpty(overrides.Profile, envOr(env, "AI_CLI_PROFILE"), file.DefaultProfile)
 	if profileName == "" {
 		return Resolved{}, fmt.Errorf("%w: no profile selected", ErrUnknownProfile)
 	}
-	prof, ok := f.Profiles[profileName]
+	profile, ok := file.Profiles[profileName]
 	if !ok {
 		return Resolved{}, fmt.Errorf("%w: %s", ErrUnknownProfile, profileName)
 	}
-
-	provName := firstNonEmpty(o.Provider, envOr(env, "AI_CLI_PROVIDER"), prof.Provider)
-	provCfg, ok := f.Providers[provName]
-	if !ok {
-		return Resolved{}, fmt.Errorf("%w: %s", ErrUnknownProvider, provName)
+	if command, ok := file.Commands[overrides.Command]; ok {
+		profile = overlay(profile, command)
 	}
 
-	model := firstNonEmpty(o.Model, envOr(env, "AI_CLI_MODEL"), prof.Model)
+	providerName := firstNonEmpty(overrides.Provider, envOr(env, "AI_CLI_PROVIDER"), profile.Provider)
+	providerCfg, ok := file.Providers[providerName]
+	if !ok {
+		return Resolved{}, fmt.Errorf("%w: %s", ErrUnknownProvider, providerName)
+	}
+
+	model := firstNonEmpty(overrides.Model, envOr(env, "AI_CLI_MODEL"), profile.Model)
 	if model == "" {
 		return Resolved{}, fmt.Errorf("no model selected for profile %q", profileName)
 	}
 
-	system := firstNonEmpty(o.System, envOr(env, "AI_CLI_SYSTEM"), prof.System)
-
-	apiKey := resolveAPIKey(provName, provCfg.Type, provCfg.APIKey, env)
+	system := firstNonEmpty(overrides.System, envOr(env, "AI_CLI_SYSTEM"), profile.System)
 
 	return Resolved{
 		Profile:      profileName,
-		ProviderName: provName,
-		ProviderType: provCfg.Type,
-		BaseURL:      provCfg.BaseURL,
-		APIKey:       apiKey,
+		ProviderName: providerName,
+		ProviderType: providerCfg.Type,
+		BaseURL:      providerCfg.BaseURL,
+		APIKey:       resolveAPIKey(providerName, providerCfg.Type, providerCfg.APIKey, env),
 		Model:        model,
 		System:       system,
-		Temperature:  prof.Temperature,
-		MaxTokens:    prof.MaxTokens,
+		Temperature:  profile.Temperature,
+		MaxTokens:    profile.MaxTokens,
 	}, nil
+}
+
+// overlay returns base with the command block's set fields applied on top.
+func overlay(base, command Profile) Profile {
+	if command.Provider != "" {
+		base.Provider = command.Provider
+	}
+	if command.Model != "" {
+		base.Model = command.Model
+	}
+	if command.System != "" {
+		base.System = command.System
+	}
+	if command.Temperature != nil {
+		base.Temperature = command.Temperature
+	}
+	if command.MaxTokens != nil {
+		base.MaxTokens = command.MaxTokens
+	}
+	return base
 }
 
 // ResolveAPIKeyForProbe exposes resolveAPIKey for callers that know the

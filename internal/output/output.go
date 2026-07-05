@@ -32,8 +32,8 @@ func ParseFormat(s string) (Format, error) {
 
 // Render consumes the chunk stream and writes it to w in the given format.
 // It drains ch fully and returns the first stream error, if any.
-func Render(f Format, w io.Writer, ch <-chan providers.Chunk) error {
-	switch f {
+func Render(format Format, w io.Writer, ch <-chan providers.Chunk) error {
+	switch format {
 	case FormatJSON:
 		return renderJSON(w, ch)
 	case FormatJSONL:

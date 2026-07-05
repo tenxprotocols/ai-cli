@@ -5,6 +5,7 @@ type File struct {
 	DefaultProfile string              `toml:"default_profile"`
 	Providers      map[string]Provider `toml:"providers"`
 	Profiles       map[string]Profile  `toml:"profiles"`
+	Commands       map[string]Profile  `toml:"commands"` // per-subcommand overrides, same shape as a profile
 }
 
 type Provider struct {

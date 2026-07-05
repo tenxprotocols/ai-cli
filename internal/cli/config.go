@@ -11,28 +11,28 @@ import (
 	"github.com/tenxprotocols/ai-cli/internal/config"
 )
 
-func newConfigCmd(gf *GlobalFlags) *cobra.Command {
+func newConfigCmd(flags *GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage config file",
 	}
 	cmd.AddCommand(
-		newConfigShowCmd(gf),
-		newConfigPathCmd(gf),
-		newConfigGetCmd(gf),
-		newConfigSetCmd(gf),
-		newConfigEditCmd(gf),
+		newConfigShowCmd(flags),
+		newConfigPathCmd(flags),
+		newConfigGetCmd(flags),
+		newConfigSetCmd(flags),
+		newConfigEditCmd(flags),
 	)
 	return cmd
 }
 
-func newConfigShowCmd(gf *GlobalFlags) *cobra.Command {
+func newConfigShowCmd(flags *GlobalFlags) *cobra.Command {
 	var showSecrets bool
 	c := &cobra.Command{
 		Use:   "show",
 		Short: "Print the resolved config (secrets redacted by default)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			p, err := resolveConfigPath(gf.ConfigPath)
+			p, err := resolveConfigPath(flags.ConfigPath)
 			if err != nil {
 				return err
 			}
@@ -58,12 +58,12 @@ func newConfigShowCmd(gf *GlobalFlags) *cobra.Command {
 	return c
 }
 
-func newConfigPathCmd(gf *GlobalFlags) *cobra.Command {
+func newConfigPathCmd(flags *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "path",
 		Short: "Print the config file path",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			p, err := resolveConfigPath(gf.ConfigPath)
+			p, err := resolveConfigPath(flags.ConfigPath)
 			if err != nil {
 				return err
 			}
@@ -73,13 +73,13 @@ func newConfigPathCmd(gf *GlobalFlags) *cobra.Command {
 	}
 }
 
-func newConfigGetCmd(gf *GlobalFlags) *cobra.Command {
+func newConfigGetCmd(flags *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <dotted.key>",
 		Short: "Print a single config value",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p, err := resolveConfigPath(gf.ConfigPath)
+			p, err := resolveConfigPath(flags.ConfigPath)
 			if err != nil {
 				return err
 			}
@@ -97,13 +97,13 @@ func newConfigGetCmd(gf *GlobalFlags) *cobra.Command {
 	}
 }
 
-func newConfigSetCmd(gf *GlobalFlags) *cobra.Command {
+func newConfigSetCmd(flags *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "set <dotted.key> <value>",
 		Short: "Set a config value",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(_ *cobra.Command, args []string) error {
-			p, err := resolveConfigPath(gf.ConfigPath)
+			p, err := resolveConfigPath(flags.ConfigPath)
 			if err != nil {
 				return err
 			}
@@ -119,12 +119,12 @@ func newConfigSetCmd(gf *GlobalFlags) *cobra.Command {
 	}
 }
 
-func newConfigEditCmd(gf *GlobalFlags) *cobra.Command {
+func newConfigEditCmd(flags *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "edit",
 		Short: "Open config in $EDITOR",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			p, err := resolveConfigPath(gf.ConfigPath)
+			p, err := resolveConfigPath(flags.ConfigPath)
 			if err != nil {
 				return err
 			}

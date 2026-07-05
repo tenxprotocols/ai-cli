@@ -13,7 +13,7 @@ import (
 	"github.com/tenxprotocols/ai-cli/internal/providers"
 )
 
-func newShellCmd(gf *GlobalFlags) *cobra.Command {
+func newShellCmd(flags *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "shell [task description...]",
 		Short: "Turn a natural-language description into a shell command",
@@ -25,35 +25,35 @@ Prints the command to stdout and never executes it. Compose as you like:
   ai shell show kubernetes contexts | pbcopy
   eval "$(ai shell count lines of Go code in this repo)"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			desc := strings.Join(args, " ")
-			if desc == "" {
+			description := strings.Join(args, " ")
+			if description == "" {
 				return errors.New("describe the task, e.g.: ai shell list open ports")
 			}
 
-			r, err := resolveForCall(gf)
+			resolved, err := resolveForCall(cmd.Name(), flags)
 			if err != nil {
 				return err
 			}
-			p, err := buildProvider(cmd.Context(), r)
+			provider, err := buildProvider(cmd.Context(), resolved)
 			if err != nil {
 				return err
 			}
 
-			system := systemPrompt(gf)
+			system := systemPrompt(flags)
 			if system == "" {
 				system = shellSystem()
 			}
-			resp, err := p.Complete(cmd.Context(), providers.Request{
-				Model:     r.Model,
+			response, err := provider.Complete(cmd.Context(), providers.Request{
+				Model:     resolved.Model,
 				System:    system,
-				MaxTokens: r.MaxTokens,
-				Messages:  userMessage(desc),
+				MaxTokens: resolved.MaxTokens,
+				Messages:  userMessage(description),
 			})
 			if err != nil {
 				return err
 			}
 
-			command := sanitizeCommand(responseText(resp))
+			command := sanitizeCommand(responseText(response))
 			if command == "" {
 				return errors.New("model returned no command")
 			}
@@ -77,27 +77,27 @@ If the task is destructive, still produce the command; the user reviews before r
 
 // sanitizeCommand strips markdown fences and prompt markers models sometimes
 // add despite instructions.
-func sanitizeCommand(s string) string {
-	s = strings.TrimSpace(s)
-	if strings.HasPrefix(s, "```") {
-		lines := strings.Split(s, "\n")
+func sanitizeCommand(reply string) string {
+	reply = strings.TrimSpace(reply)
+	if strings.HasPrefix(reply, "```") {
+		lines := strings.Split(reply, "\n")
 		lines = lines[1:] // drop opening fence (with any language tag)
 		if n := len(lines); n > 0 && strings.HasPrefix(strings.TrimSpace(lines[n-1]), "```") {
 			lines = lines[:n-1]
 		}
-		s = strings.TrimSpace(strings.Join(lines, "\n"))
+		reply = strings.TrimSpace(strings.Join(lines, "\n"))
 	}
-	return strings.TrimPrefix(s, "$ ")
+	return strings.TrimPrefix(reply, "$ ")
 }
 
-func responseText(resp providers.Response) string {
-	var s strings.Builder
-	for _, m := range resp.Messages {
-		for _, p := range m.Content {
-			if p.Type == providers.PartText {
-				s.WriteString(p.Text)
+func responseText(response providers.Response) string {
+	var text strings.Builder
+	for _, message := range response.Messages {
+		for _, part := range message.Content {
+			if part.Type == providers.PartText {
+				text.WriteString(part.Text)
 			}
 		}
 	}
-	return s.String()
+	return text.String()
 }

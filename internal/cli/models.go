@@ -18,28 +18,24 @@ type modelRow struct {
 	DisplayName string `json:"display_name,omitempty"`
 }
 
-func newModelsCmd(gf *GlobalFlags) *cobra.Command {
+func newModelsCmd(flags *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "models",
 		Short: "List models from configured providers",
 		Long:  "List models from configured providers. Filter with --provider.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			f, err := output.ParseFormat(gf.Format)
+			format, err := output.ParseFormat(flags.Format)
 			if err != nil {
 				return err
 			}
-			path, err := resolveConfigPath(gf.ConfigPath)
-			if err != nil {
-				return err
-			}
-			cfg, err := config.LoadFile(path)
+			path, file, err := loadConfig(flags)
 			if err != nil {
 				return err
 			}
 
-			names := make([]string, 0, len(cfg.Providers))
-			for name := range cfg.Providers {
-				if gf.Provider == "" || gf.Provider == name {
+			names := make([]string, 0, len(file.Providers))
+			for name := range file.Providers {
+				if flags.Provider == "" || flags.Provider == name {
 					names = append(names, name)
 				}
 			}
@@ -50,18 +46,18 @@ func newModelsCmd(gf *GlobalFlags) *cobra.Command {
 
 			var rows []modelRow
 			for _, name := range names {
-				pc := cfg.Providers[name]
-				p, err := buildProvider(cmd.Context(), config.Resolved{
+				providerCfg := file.Providers[name]
+				provider, err := buildProvider(cmd.Context(), config.Resolved{
 					ProviderName: name,
-					ProviderType: pc.Type,
-					BaseURL:      pc.BaseURL,
-					APIKey:       config.ResolveAPIKeyForProbe(name, pc.Type, pc.APIKey, config.OSEnv),
+					ProviderType: providerCfg.Type,
+					BaseURL:      providerCfg.BaseURL,
+					APIKey:       config.ResolveAPIKeyForProbe(name, providerCfg.Type, providerCfg.APIKey, config.OSEnv),
 				})
 				if err == nil {
-					var list []providers.ModelInfo
-					list, err = p.ListModels(cmd.Context())
-					for _, m := range list {
-						rows = append(rows, modelRow{Provider: name, ID: m.ID, DisplayName: m.DisplayName})
+					var models []providers.ModelInfo
+					models, err = provider.ListModels(cmd.Context())
+					for _, model := range models {
+						rows = append(rows, modelRow{Provider: name, ID: model.ID, DisplayName: model.DisplayName})
 					}
 				}
 				if err != nil {
@@ -69,27 +65,32 @@ func newModelsCmd(gf *GlobalFlags) *cobra.Command {
 				}
 			}
 
-			w := cmd.OutOrStdout()
-			if f == output.FormatText {
-				for _, r := range rows {
-					if r.DisplayName != "" {
-						fmt.Fprintf(w, "%s/%s\t%s\n", r.Provider, r.ID, r.DisplayName)
-						continue
-					}
-					fmt.Fprintf(w, "%s/%s\n", r.Provider, r.ID)
-				}
-				return nil
-			}
-			enc := json.NewEncoder(w)
-			if f == output.FormatJSON {
-				return enc.Encode(rows)
-			}
-			for _, r := range rows {
-				if err := enc.Encode(r); err != nil {
-					return err
-				}
-			}
-			return nil
+			return renderModelRows(format, cmd, rows)
 		},
+	}
+}
+
+func renderModelRows(format output.Format, cmd *cobra.Command, rows []modelRow) error {
+	out := cmd.OutOrStdout()
+	switch format {
+	case output.FormatText:
+		for _, row := range rows {
+			if row.DisplayName != "" {
+				fmt.Fprintf(out, "%s/%s\t%s\n", row.Provider, row.ID, row.DisplayName)
+				continue
+			}
+			fmt.Fprintf(out, "%s/%s\n", row.Provider, row.ID)
+		}
+		return nil
+	case output.FormatJSON:
+		return json.NewEncoder(out).Encode(rows)
+	default: // jsonl
+		encoder := json.NewEncoder(out)
+		for _, row := range rows {
+			if err := encoder.Encode(row); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }
