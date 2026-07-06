@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
@@ -46,13 +48,25 @@ func SaveFile(path string, f File) error {
 	return os.WriteFile(path, data, 0o600)
 }
 
-// DefaultPath returns the platform-appropriate default config file path.
+// DefaultPath returns the platform-appropriate default config file path:
+// $XDG_CONFIG_HOME/ai-cli/config.toml, falling back to ~/.config on
+// macOS/Linux and %AppData% on Windows.
 func DefaultPath() (string, error) {
-	dir, err := os.UserConfigDir()
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "ai-cli", "config.toml"), nil
+	}
+	if runtime.GOOS == "windows" {
+		dir, err := os.UserConfigDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(dir, "ai-cli", "config.toml"), nil
+	}
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/ai-cli/config.toml", dir), nil
+	return filepath.Join(home, ".config", "ai-cli", "config.toml"), nil
 }
 
 // GetKey returns a value from the TOML tree by dotted path. Only known paths

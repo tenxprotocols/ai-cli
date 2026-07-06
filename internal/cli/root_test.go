@@ -29,3 +29,11 @@ func TestRoot_Version(t *testing.T) {
 	require.NoError(t, cmd.Execute())
 	assert.True(t, strings.HasPrefix(buf.String(), "ai "))
 }
+
+func TestRoot_FormatFromEnv(t *testing.T) {
+	t.Setenv("AI_CLI_FORMAT", "json")
+	root := NewRoot()
+	format, err := root.PersistentFlags().GetString("format")
+	require.NoError(t, err)
+	assert.Equal(t, "json", format)
+}
