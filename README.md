@@ -39,6 +39,7 @@ model    = "claude-sonnet-4-6"
 
 | Command | Purpose |
 |---|---|
+| `ai init` | Setup wizard — detects keys/Ollama, writes the config |
 | `ai <words>` / `ai ask` | One-shot prompt; streams; reads piped stdin |
 | `ai shell <description>` | Natural language → one shell command on stdout (never executed) |
 | `ai models` | List models across configured providers |

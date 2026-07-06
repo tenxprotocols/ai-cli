@@ -29,6 +29,14 @@ Symlinks work git-style: `ai-shell list open ports` ≡ `ai shell list open port
 
 ---
 
+## `ai init`
+
+Interactive setup wizard. Detects API keys in the environment and a running local Ollama, offers a live model list when credentials allow, and writes provider + profile to the config file. Existing config is merged — never overwritten. API keys are never written to disk; the wizard prints the `export` line to use instead.
+
+```bash
+ai init
+```
+
 ## `ai ask [prompt words...]`
 
 One-shot prompt. Positional words join into the prompt — no quoting needed. Piped stdin is prepended to the prompt.

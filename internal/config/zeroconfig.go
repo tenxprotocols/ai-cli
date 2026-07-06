@@ -25,6 +25,16 @@ func ZeroConfig(overrides Overrides, env EnvLookup, ollama func() (model string,
 	return resolved, true
 }
 
+// DefaultModel suggests a model for a built-in provider type.
+func DefaultModel(typ string) string {
+	for _, d := range zeroConfigDefaults {
+		if d.typ == typ {
+			return d.model
+		}
+	}
+	return ""
+}
+
 func zeroProvider(env EnvLookup, ollama func() (string, bool)) (Resolved, bool) {
 	for _, d := range zeroConfigDefaults {
 		if key, ok := env(d.envKey); ok && key != "" {

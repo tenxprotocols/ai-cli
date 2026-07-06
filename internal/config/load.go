@@ -39,11 +39,14 @@ func LoadFile(path string) (File, error) {
 	return f, nil
 }
 
-// SaveFile writes the TOML back. Used by `ai config set`.
+// SaveFile writes the TOML back, creating parent directories as needed.
 func SaveFile(path string, f File) error {
 	data, err := toml.Marshal(f)
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
 	}
 	return os.WriteFile(path, data, 0o600)
 }
