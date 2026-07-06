@@ -14,10 +14,17 @@ go install github.com/tenxprotocols/ai-cli/cmd/ai@latest
 
 ## 60-second start
 
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+No config needed — export a key you already have (or run Ollama) and go:
 
-mkdir -p ~/.config/ai-cli && cat > ~/.config/ai-cli/config.toml <<'EOF'
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI / GEMINI / OPENROUTER key, or `ollama serve`
+ai what is the phase of the moon
+```
+
+Zero-config picks the first key it finds with a sensible default model. A config file ([docs](docs/configuration.md)) unlocks profiles, per-command models, and custom endpoints:
+
+```toml
+# ~/.config/ai-cli/config.toml
 default_profile = "default"
 
 [providers.anthropic]
@@ -26,9 +33,6 @@ type = "anthropic"
 [profiles.default]
 provider = "anthropic"
 model    = "claude-sonnet-4-6"
-EOF
-
-ai what is the phase of the moon
 ```
 
 ## What it does

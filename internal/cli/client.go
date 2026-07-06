@@ -2,17 +2,22 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/tenxprotocols/ai-cli/internal/config"
 	"github.com/tenxprotocols/ai-cli/internal/providers"
 )
 
 // resolveForCall loads the config file and resolves profile, provider, model,
-// and system prompt for one invocation of the named subcommand.
+// and system prompt for one invocation of the named subcommand. When the file
+// defines no profiles, zero-config mode synthesizes one from well-known env
+// keys or a running local Ollama.
 func resolveForCall(command string, flags *GlobalFlags) (config.Resolved, error) {
 	path, err := resolveConfigPath(flags.ConfigPath)
 	if err != nil {
@@ -22,13 +27,47 @@ func resolveForCall(command string, flags *GlobalFlags) (config.Resolved, error)
 	if err != nil {
 		return config.Resolved{}, err
 	}
-	return config.Resolve(file, config.Overrides{
+	overrides := config.Overrides{
 		Command:  command,
 		Profile:  flags.Profile,
 		Provider: flags.Provider,
 		Model:    flags.Model,
 		System:   systemPrompt(flags),
-	}, config.OSEnv)
+	}
+	resolved, err := config.Resolve(file, overrides, config.OSEnv)
+	if err == nil || len(file.Profiles) > 0 || flags.Profile != "" {
+		return resolved, err
+	}
+	if zero, ok := config.ZeroConfig(overrides, config.OSEnv, ollamaProbe); ok {
+		return zero, nil
+	}
+	return config.Resolved{}, fmt.Errorf(`nothing configured yet. Fastest ways to a working ai:
+
+  export ANTHROPIC_API_KEY=...    # or OPENAI_API_KEY / OPENROUTER_API_KEY
+  export GEMINI_API_KEY=...       # free tier: https://aistudio.google.com
+  ollama serve                    # local and free, no key needed
+
+or write a config file at %s — see docs/configuration.md`, path)
+}
+
+// ollamaProbe checks for a local Ollama and returns its first model.
+// Package-level so tests can substitute it.
+var ollamaProbe = func() (string, bool) {
+	client := &http.Client{Timeout: 300 * time.Millisecond}
+	resp, err := client.Get("http://localhost:11434/v1/models")
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return "", false
+	}
+	defer resp.Body.Close()
+	var out struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&out) != nil || len(out.Data) == 0 {
+		return "", false
+	}
+	return out.Data[0].ID, true
 }
 
 func systemPrompt(flags *GlobalFlags) string {
