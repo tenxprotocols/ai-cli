@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -19,7 +22,9 @@ func newShellCmd(flags *GlobalFlags) *cobra.Command {
 		Short: "Turn a natural-language description into a shell command",
 		Long: `Turn a natural-language description into a shell command.
 
-Prints the command to stdout and never executes it. Compose as you like:
+Prints the command to stdout. In an interactive terminal you are then
+offered: copy to clipboard (default), run it, or do nothing. Nothing runs
+without that explicit choice. Piped or scripted use prints the command only:
 
   ai shell find files larger than 500MB modified in the last week
   ai shell show kubernetes contexts | pbcopy
@@ -57,10 +62,84 @@ Prints the command to stdout and never executes it. Compose as you like:
 			if command == "" {
 				return errors.New("model returned no command")
 			}
-			_, err = fmt.Fprintln(cmd.OutOrStdout(), command)
-			return err
+			if _, err := fmt.Fprintln(cmd.OutOrStdout(), command); err != nil {
+				return err
+			}
+			if !stdioIsTTY() {
+				return nil // piped or scripted: stdout carries the command, nothing else
+			}
+			return offerAction(cmd.InOrStdin(), cmd.ErrOrStderr(), command)
 		},
 	}
+}
+
+// offerAction lets an interactive user act on the generated command. The
+// prompt lives on stderr so stdout stays pure even in odd redirections.
+func offerAction(in io.Reader, prompt io.Writer, command string) error {
+	fmt.Fprint(prompt, "copy, run, or nothing? [C/r/n] ")
+	scanner := bufio.NewScanner(in)
+	answer := ""
+	if scanner.Scan() {
+		answer = strings.ToLower(strings.TrimSpace(scanner.Text()))
+	}
+	switch answer {
+	case "", "c", "copy":
+		if err := copyToClipboard(command); err != nil {
+			return err
+		}
+		fmt.Fprintln(prompt, "copied")
+		return nil
+	case "r", "run":
+		return runCommand(command)
+	default:
+		return nil
+	}
+}
+
+// stdioIsTTY reports whether both stdin and stdout are terminals.
+// Package-level so tests can substitute it.
+var stdioIsTTY = func() bool {
+	for _, f := range []*os.File{os.Stdin, os.Stdout} {
+		info, err := f.Stat()
+		if err != nil || info.Mode()&os.ModeCharDevice == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// runCommand executes the command through the user's shell with stdio
+// attached. Package-level so tests can substitute it.
+var runCommand = func(command string) error {
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+	run := exec.Command(shell, "-c", command)
+	run.Stdin, run.Stdout, run.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return run.Run()
+}
+
+// copyToClipboard pipes text to the first clipboard tool found.
+// Package-level so tests can substitute it.
+var copyToClipboard = func(text string) error {
+	tools := [][]string{
+		{"pbcopy"},
+		{"wl-copy"},
+		{"xclip", "-selection", "clipboard"},
+		{"xsel", "--clipboard", "--input"},
+		{"clip"},
+	}
+	for _, tool := range tools {
+		path, err := exec.LookPath(tool[0])
+		if err != nil {
+			continue
+		}
+		pipe := exec.Command(path, tool[1:]...)
+		pipe.Stdin = strings.NewReader(text)
+		return pipe.Run()
+	}
+	return errors.New("no clipboard tool found (pbcopy, wl-copy, xclip, xsel, clip)")
 }
 
 func shellSystem() string {

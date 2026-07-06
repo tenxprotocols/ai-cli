@@ -53,16 +53,20 @@ Streams by default with `--format text|jsonl`; `--format json` implies non-strea
 
 ## `ai shell [task description...]`
 
-Turns a natural-language description into **one shell command on stdout**. Never executes anything — review, then run.
+Turns a natural-language description into **one shell command on stdout**. Nothing runs without your explicit choice.
 
 ```bash
 ai shell find all files larger than 500MB created in the last week
 # find . -type f -size +500M -mtime -7
+# copy, run, or nothing? [C/r/n]
 
 ai shell show kubernetes contexts | pbcopy
 eval "$(ai shell count lines of go code in this repo)"
 ```
 
+- **Interactive terminal:** after the command prints, choose **c**opy to clipboard (default — just hit Enter), **r**un it via `$SHELL -c` (its exit code becomes `ai`'s), or **n**othing. The prompt goes to stderr, so stdout is always exactly the command.
+- **Piped or scripted** (either stdin or stdout not a TTY): the command prints and `ai` exits — no prompt, fully composable.
+- Clipboard uses the first of `pbcopy`, `wl-copy`, `xclip`, `xsel`, `clip` found on `$PATH`.
 - The built-in prompt targets your OS (`runtime.GOOS`) and `$SHELL`; markdown fences and `$ ` markers are stripped from the reply.
 - `--system` replaces the built-in prompt; profile/command `system` values are ignored so a chatty profile can't break output.
 - Give it a fast model via `[commands.shell] model = "..."` — see configuration.md.
