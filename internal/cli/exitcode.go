@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"os/exec"
 
 	"github.com/tenxprotocols/ai-cli/internal/config"
 	"github.com/tenxprotocols/ai-cli/internal/providers"
@@ -25,6 +26,10 @@ func ExitCode(err error) int {
 	}
 	if errors.Is(err, context.Canceled) {
 		return ExitInterrupted
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode() // `ai shell` ran the command; pass its code through
 	}
 	var apiErr *providers.APIError
 	if errors.As(err, &apiErr) {
