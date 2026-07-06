@@ -51,4 +51,4 @@ tasks:
       DIR: '{{.AI_CLI_INSTALL_DIR | default "/usr/local/bin"}}'
     cmds:
       - install -m 0755 ./bin/ai {{.DIR}}/ai
-      - for name in ai-chat ai-ask ai-config ai-models; do ln -sf {{.DIR}}/ai {{.DIR}}/$name; done
+      - for name in ai-ask ai-shell ai-config ai-models; do ln -sf {{.DIR}}/ai {{.DIR}}/$name; done
