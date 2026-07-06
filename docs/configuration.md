@@ -2,6 +2,20 @@
 
 One TOML file plus environment variables. Everything the file can do, flags and env vars can override.
 
+## Zero-config
+
+With no config file (or one that defines no profiles), `ai` synthesizes a setup from the environment — first match wins:
+
+| Source | Provider | Default model |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | anthropic | `claude-sonnet-5` |
+| `OPENAI_API_KEY` | openai | `gpt-5-mini` |
+| `GEMINI_API_KEY` | gemini | `gemini-2.5-flash` (free tier: [aistudio.google.com](https://aistudio.google.com)) |
+| `OPENROUTER_API_KEY` | openrouter | `openrouter/auto` |
+| Local Ollama on `:11434` | ollama | first installed model |
+
+`--model`, `--system`, and their `AI_CLI_*` env forms still apply. `[commands.<name>]` blocks and profiles require a config file — that's the point at which you write one.
+
 ## Where the file lives
 
 First match wins:

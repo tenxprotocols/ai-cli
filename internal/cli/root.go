@@ -40,6 +40,7 @@ func NewRoot() *cobra.Command {
 	persistent.StringVar(&flags.ConfigPath, "config", "", "config file path (env: AI_CLI_CONFIG)")
 
 	root.AddCommand(newVersionCmd())
+	root.AddCommand(newInitCmd(flags))
 	root.AddCommand(newAskCmd(flags))
 	root.AddCommand(newShellCmd(flags))
 	root.AddCommand(newConfigCmd(flags))

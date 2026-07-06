@@ -72,3 +72,9 @@ homebrew_casks:
     homepage: https://github.com/tenxprotocols/ai-cli
     description: "A small, fast CLI for talking to LLMs"
     license: MIT
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ai"]
+          end
