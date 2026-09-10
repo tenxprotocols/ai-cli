@@ -84,12 +84,12 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	elapsed := time.Since(start).Round(time.Millisecond)
 	if err != nil {
 		log.Error("http: request failed",
-			"method", req.Method, "url", loggedURL, "dur", elapsed, "err", err)
+			"method", req.Method, "url", loggedURL, "dur", elapsed.String(), "err", err)
 		return nil, err
 	}
 
 	if log.Enabled(ctx, LevelDebug) {
-		log.Debug("http: response", "status", resp.StatusCode, "dur", elapsed)
+		log.Debug("http: response", "status", resp.StatusCode, "dur", elapsed.String())
 	}
 	if trace {
 		log.Log(ctx, LevelTrace, "http: response headers", t.headerAttrs(resp.Header)...)

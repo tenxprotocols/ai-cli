@@ -114,7 +114,7 @@ func (t *usageTap) wrap(in <-chan providers.Chunk) <-chan providers.Chunk {
 // response is worth a warning at the default level.
 func logUsage(log *slog.Logger, start time.Time, usage providers.Usage, stop string) {
 	log.Info("usage", "in", usage.InputTokens, "out", usage.OutputTokens,
-		"stop", stop, "dur", time.Since(start).Round(time.Millisecond))
+		"stop", stop, "dur", time.Since(start).Round(time.Millisecond).String())
 	if stop == providers.StopMaxTokens {
 		log.Warn("response truncated: hit max_tokens", "out", usage.OutputTokens)
 	}
