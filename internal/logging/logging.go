@@ -39,6 +39,17 @@ func LevelNames() []string {
 	return []string{"error", "warn", "info", "debug", "trace"}
 }
 
+// LevelName spells a level the way the flag accepts it. slog would render the
+// custom trace level as DEBUG-4.
+func LevelName(level slog.Level) string {
+	for name, candidate := range levelsByName {
+		if candidate == level {
+			return name
+		}
+	}
+	return strings.ToLower(level.String())
+}
+
 // ParseLevel maps a level name to a level. An empty name yields DefaultLevel.
 func ParseLevel(name string) (slog.Level, error) {
 	if name == "" {
@@ -166,6 +177,13 @@ func (s *Sink) Level() slog.Level {
 	return s.level.Level()
 }
 
+// Options reports the options the sink is currently running with.
+func (s *Sink) Options() Options {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.opts
+}
+
 // Secrets reports whether credentials print unredacted.
 func (s *Sink) Secrets() bool {
 	s.mu.Lock()
@@ -183,6 +201,20 @@ func (s *Sink) Close() error {
 	err := s.file.Close()
 	s.file = nil
 	return err
+}
+
+// PluginEnv returns the environment assignments that hand these options to a
+// child process, so an `ai-<name>` plugin logs at the level its parent was
+// asked for. Secrets are deliberately not passed along.
+func PluginEnv(options Options) []string {
+	env := []string{"AI_CLI_LOG_LEVEL=" + LevelName(options.Level)}
+	if options.Format != FormatText {
+		env = append(env, "AI_CLI_LOG_FORMAT="+string(options.Format))
+	}
+	if options.File != "" {
+		env = append(env, "AI_CLI_LOG_FILE="+options.File)
+	}
+	return env
 }
 
 type ctxKey struct{}

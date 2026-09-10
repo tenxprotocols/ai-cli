@@ -22,8 +22,12 @@ func (e *APIError) Error() string {
 }
 
 // send issues a JSON request and returns the response, translating non-2xx
-// statuses into *APIError. Callers own resp.Body.
-func send(ctx context.Context, method, url string, headers map[string]string, body any) (*http.Response, error) {
+// statuses into *APIError. Callers own resp.Body. A nil client falls back to
+// http.DefaultClient; the CLI passes one whose transport logs the exchange.
+func send(ctx context.Context, client *http.Client, method, url string, headers map[string]string, body any) (*http.Response, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
 	var rd io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -40,7 +44,7 @@ func send(ctx context.Context, method, url string, headers map[string]string, bo
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

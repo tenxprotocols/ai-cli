@@ -52,7 +52,7 @@ func newModelsCmd(flags *GlobalFlags) *cobra.Command {
 					ProviderType: providerCfg.Type,
 					BaseURL:      providerCfg.BaseURL,
 					APIKey:       config.ResolveAPIKeyForProbe(name, providerCfg.Type, providerCfg.APIKey, config.OSEnv),
-				})
+				}, flags)
 				if err == nil {
 					var models []providers.ModelInfo
 					models, err = provider.ListModels(cmd.Context())

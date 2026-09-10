@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tenxprotocols/ai-cli/internal/config"
+	"github.com/tenxprotocols/ai-cli/internal/logging"
 	"github.com/tenxprotocols/ai-cli/internal/providers"
 )
 
@@ -81,23 +82,33 @@ func systemPrompt(flags *GlobalFlags) string {
 	return strings.TrimSpace(string(contents))
 }
 
-// buildProvider returns the resolved provider, honoring test injection.
-func buildProvider(ctx context.Context, resolved config.Resolved) (providers.Provider, error) {
+// buildProvider returns the resolved provider, honoring test injection. Its
+// HTTP client logs the exchange at the level the run was started with.
+func buildProvider(ctx context.Context, resolved config.Resolved, flags *GlobalFlags) (providers.Provider, error) {
+	log := logging.FromContext(ctx)
 	if provider, ok := injectedProvider(ctx, resolved.ProviderName); ok {
+		log.Debug("provider: injected by test", "name", resolved.ProviderName)
 		return provider, nil
 	}
 	if resolved.APIKey == "" && resolved.ProviderType != "openai-compat" {
+		log.Warn("provider: no API key resolved", "name", resolved.ProviderName, "type", resolved.ProviderType)
 		return nil, fmt.Errorf("%w for provider %q (set AI_CLI_%s_API_KEY)",
 			config.ErrMissingAPIKey, resolved.ProviderName, strings.ToUpper(resolved.ProviderName))
 	}
 	registry := providers.NewRegistry()
 	providers.RegisterBuiltins(registry)
+	log.Debug("provider: building",
+		"name", resolved.ProviderName, "type", resolved.ProviderType, "base_url", resolved.BaseURL)
 	return registry.Get(resolved.ProviderType, providers.Config{
-		Name:    resolved.ProviderName,
-		APIKey:  resolved.APIKey,
-		BaseURL: resolved.BaseURL,
+		Name:       resolved.ProviderName,
+		APIKey:     resolved.APIKey,
+		BaseURL:    resolved.BaseURL,
+		HTTPClient: logging.NewClient(nil, log, logSecrets(flags)),
 	})
 }
+
+// logSecrets reports whether credentials may be logged unredacted.
+func logSecrets(flags *GlobalFlags) bool { return flags != nil && flags.LogSecrets }
 
 // readStdinIfPiped returns piped stdin content, if any.
 func readStdinIfPiped() (string, bool) {

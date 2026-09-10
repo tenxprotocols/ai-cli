@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 const (
@@ -15,6 +16,7 @@ type anthropic struct {
 	name    string
 	baseURL string
 	apiKey  string
+	client  *http.Client
 }
 
 func newAnthropic(cfg Config) (Provider, error) {
@@ -22,7 +24,7 @@ func newAnthropic(cfg Config) (Provider, error) {
 	if base == "" {
 		base = "https://api.anthropic.com"
 	}
-	return &anthropic{name: cfg.Name, baseURL: base, apiKey: cfg.APIKey}, nil
+	return &anthropic{name: cfg.Name, baseURL: base, apiKey: cfg.APIKey, client: cfg.HTTPClient}, nil
 }
 
 func (a *anthropic) Name() string { return a.name }
@@ -63,7 +65,7 @@ type anUsage struct {
 }
 
 func (a *anthropic) Complete(ctx context.Context, req Request) (Response, error) {
-	resp, err := send(ctx, "POST", a.baseURL+"/v1/messages", a.headers(), a.body(req))
+	resp, err := send(ctx, a.client, "POST", a.baseURL+"/v1/messages", a.headers(), a.body(req))
 	if err != nil {
 		return Response{}, err
 	}
@@ -96,7 +98,7 @@ func (a *anthropic) Complete(ctx context.Context, req Request) (Response, error)
 func (a *anthropic) Stream(ctx context.Context, req Request) (<-chan Chunk, error) {
 	body := a.body(req)
 	body["stream"] = true
-	resp, err := send(ctx, "POST", a.baseURL+"/v1/messages", a.headers(), body) //nolint:bodyclose // closed by the streaming goroutine
+	resp, err := send(ctx, a.client, "POST", a.baseURL+"/v1/messages", a.headers(), body) //nolint:bodyclose // closed by the streaming goroutine
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +160,7 @@ func (a *anthropic) Stream(ctx context.Context, req Request) (<-chan Chunk, erro
 }
 
 func (a *anthropic) ListModels(ctx context.Context) ([]ModelInfo, error) {
-	resp, err := send(ctx, "GET", a.baseURL+"/v1/models", a.headers(), nil)
+	resp, err := send(ctx, a.client, "GET", a.baseURL+"/v1/models", a.headers(), nil)
 	if err != nil {
 		return nil, err
 	}

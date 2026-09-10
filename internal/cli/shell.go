@@ -39,7 +39,7 @@ without that explicit choice. Piped or scripted use prints the command only:
 			if err != nil {
 				return err
 			}
-			provider, err := buildProvider(cmd.Context(), resolved)
+			provider, err := buildProvider(cmd.Context(), resolved, flags)
 			if err != nil {
 				return err
 			}

@@ -38,7 +38,7 @@ func runPrompt(cmd *cobra.Command, flags *GlobalFlags, prompt string) error {
 	if err != nil {
 		return err
 	}
-	provider, err := buildProvider(cmd.Context(), resolved)
+	provider, err := buildProvider(cmd.Context(), resolved, flags)
 	if err != nil {
 		return err
 	}

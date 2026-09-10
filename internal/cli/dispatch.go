@@ -18,6 +18,18 @@ const (
 	ResolveAskFallback
 )
 
+// String names the kind for logs.
+func (k ResolutionKind) String() string {
+	switch k {
+	case ResolvePlugin:
+		return "plugin"
+	case ResolveAskFallback:
+		return "ask-fallback"
+	default:
+		return "builtin"
+	}
+}
+
 type Resolution struct {
 	Kind       ResolutionKind
 	Args       []string // args to hand to cobra (for Builtin/AskFallback) or child (for Plugin)
@@ -118,7 +130,7 @@ func flagTakesValue(flag string) bool {
 		name = name[:idx]
 	}
 	switch name {
-	case "no-stream":
+	case "no-stream", "log-secrets":
 		return false
 	default:
 		return true
@@ -126,13 +138,17 @@ func flagTakesValue(flag string) bool {
 }
 
 // Exec hands control to a plugin binary. On Unix this replaces the process;
-// on Windows, it spawns and relays the exit code.
-func Exec(path string, args []string) error {
+// on Windows, it spawns and relays the exit code. extraEnv is appended to the
+// inherited environment, which is how the plugin learns the log level asked
+// for on the command line.
+func Exec(path string, args []string, extraEnv []string) error {
+	env := append(os.Environ(), extraEnv...)
 	if runtime.GOOS == "windows" {
 		cmd := exec.Command(path, args[1:]...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		cmd.Env = env
 		err := cmd.Run()
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
@@ -140,5 +156,5 @@ func Exec(path string, args []string) error {
 		}
 		return err
 	}
-	return syscall.Exec(path, args, os.Environ())
+	return syscall.Exec(path, args, env)
 }
