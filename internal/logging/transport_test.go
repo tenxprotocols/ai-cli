@@ -193,8 +193,9 @@ func TestTransport_LogsTransportErrorAtDefaultLevel(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodPost, "https://api.anthropic.com/v1/messages", nil)
 	require.NoError(t, err)
-	_, err = transport.RoundTrip(req)
+	resp, err := transport.RoundTrip(req) //nolint:bodyclose // the request failed; there is no body
 	require.Error(t, err)
+	require.Nil(t, resp)
 
 	out := buf.String()
 	assert.Contains(t, out, "ERROR")

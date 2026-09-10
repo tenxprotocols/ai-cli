@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -19,7 +20,8 @@ import (
 // and system prompt for one invocation of the named subcommand. When the file
 // defines no profiles, zero-config mode synthesizes one from well-known env
 // keys or a running local Ollama.
-func resolveForCall(command string, flags *GlobalFlags) (config.Resolved, error) {
+func resolveForCall(ctx context.Context, command string, flags *GlobalFlags) (config.Resolved, error) {
+	log := logging.FromContext(ctx)
 	path, err := resolveConfigPath(flags.ConfigPath)
 	if err != nil {
 		return config.Resolved{}, err
@@ -28,6 +30,9 @@ func resolveForCall(command string, flags *GlobalFlags) (config.Resolved, error)
 	if err != nil {
 		return config.Resolved{}, err
 	}
+	log.Info("config: loaded",
+		"path", path, "profiles", len(file.Profiles), "providers", len(file.Providers))
+
 	overrides := config.Overrides{
 		Command:  command,
 		Profile:  flags.Profile,
@@ -35,11 +40,21 @@ func resolveForCall(command string, flags *GlobalFlags) (config.Resolved, error)
 		Model:    flags.Model,
 		System:   systemPrompt(flags),
 	}
-	resolved, err := config.Resolve(file, overrides, config.OSEnv)
+	resolved, err := config.Resolve(ctx, file, overrides, config.OSEnv)
 	if err == nil || len(file.Profiles) > 0 || flags.Profile != "" {
+		if err == nil {
+			logResolved(log, resolved)
+		}
 		return resolved, err
 	}
-	if zero, ok := config.ZeroConfig(overrides, config.OSEnv, ollamaProbe); ok {
+
+	log.Debug("config: no profiles configured, trying zero-config", "path", path)
+	probe := func() (string, bool) {
+		client := logging.NewClient(&http.Client{Timeout: ollamaProbeTimeout}, log, logSecrets(flags))
+		return ollamaProbe(client)
+	}
+	if zero, ok := config.ZeroConfig(ctx, overrides, config.OSEnv, probe); ok {
+		logResolved(log, zero)
 		return zero, nil
 	}
 	return config.Resolved{}, fmt.Errorf(`nothing configured yet. Fastest ways to a working ai:
@@ -51,10 +66,19 @@ func resolveForCall(command string, flags *GlobalFlags) (config.Resolved, error)
 or write a config file at %s — see docs/configuration.md`, path)
 }
 
-// ollamaProbe checks for a local Ollama and returns its first model.
-// Package-level so tests can substitute it.
-var ollamaProbe = func() (string, bool) {
-	client := &http.Client{Timeout: 300 * time.Millisecond}
+// logResolved reports in one line what a run will actually use.
+func logResolved(log *slog.Logger, resolved config.Resolved) {
+	log.Info("resolved", "profile", resolved.Profile, "provider", resolved.ProviderName,
+		"type", resolved.ProviderType, "model", resolved.Model)
+}
+
+// ollamaProbeTimeout keeps the zero-config probe from stalling a run.
+const ollamaProbeTimeout = 300 * time.Millisecond
+
+// ollamaProbe checks for a local Ollama and returns its first model. It takes
+// its client from the caller so the probe appears in the log like any other
+// request. Package-level so tests can substitute it.
+var ollamaProbe = func(client *http.Client) (string, bool) {
 	resp, err := client.Get("http://localhost:11434/v1/models")
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return "", false

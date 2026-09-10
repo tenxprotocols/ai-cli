@@ -18,6 +18,18 @@ const (
 	FormatJSONL
 )
 
+// String names the format, so it reads properly in logs.
+func (f Format) String() string {
+	switch f {
+	case FormatJSON:
+		return "json"
+	case FormatJSONL:
+		return "jsonl"
+	default:
+		return "text"
+	}
+}
+
 func ParseFormat(s string) (Format, error) {
 	switch s {
 	case "text", "":

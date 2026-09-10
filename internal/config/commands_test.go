@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,21 +25,21 @@ func TestResolve_CommandBlockOverlaysProfile(t *testing.T) {
 	}
 	noEnv := func(string) (string, bool) { return "", false }
 
-	shell, err := Resolve(file, Overrides{Command: "shell"}, noEnv)
+	shell, err := Resolve(context.Background(), file, Overrides{Command: "shell"}, noEnv)
 	require.NoError(t, err)
 	assert.Equal(t, "fast-model", shell.Model)
 	assert.Equal(t, "anthropic", shell.ProviderName, "unset fields fall through to the profile")
 
-	ask, err := Resolve(file, Overrides{Command: "ask"}, noEnv)
+	ask, err := Resolve(context.Background(), file, Overrides{Command: "ask"}, noEnv)
 	require.NoError(t, err)
 	assert.Equal(t, "ollama", ask.ProviderName, "command block may switch provider")
 	assert.Equal(t, "local-model", ask.Model)
 
-	models, err := Resolve(file, Overrides{Command: "models"}, noEnv)
+	models, err := Resolve(context.Background(), file, Overrides{Command: "models"}, noEnv)
 	require.NoError(t, err)
 	assert.Equal(t, "big-model", models.Model, "commands without a block use the profile")
 
-	flag, err := Resolve(file, Overrides{Command: "shell", Model: "flag-model"}, noEnv)
+	flag, err := Resolve(context.Background(), file, Overrides{Command: "shell", Model: "flag-model"}, noEnv)
 	require.NoError(t, err)
 	assert.Equal(t, "flag-model", flag.Model, "flags beat command blocks")
 }

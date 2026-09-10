@@ -5,14 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/tenxprotocols/ai-cli/internal/logging"
 	"github.com/tenxprotocols/ai-cli/internal/providers"
 )
 
@@ -30,12 +33,13 @@ without that explicit choice. Piped or scripted use prints the command only:
   ai shell show kubernetes contexts | pbcopy
   eval "$(ai shell count lines of Go code in this repo)"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			log := logging.FromContext(cmd.Context())
 			description := strings.Join(args, " ")
 			if description == "" {
 				return errors.New("describe the task, e.g.: ai shell list open ports")
 			}
 
-			resolved, err := resolveForCall(cmd.Name(), flags)
+			resolved, err := resolveForCall(cmd.Context(), cmd.Name(), flags)
 			if err != nil {
 				return err
 			}
@@ -48,6 +52,8 @@ without that explicit choice. Piped or scripted use prints the command only:
 			if system == "" {
 				system = shellSystem()
 			}
+			log.Debug("shell: request", "chars", len(description), "system_chars", len(system))
+			start := time.Now()
 			response, err := provider.Complete(cmd.Context(), providers.Request{
 				Model:     resolved.Model,
 				System:    system,
@@ -57,25 +63,28 @@ without that explicit choice. Piped or scripted use prints the command only:
 			if err != nil {
 				return err
 			}
+			logUsage(log, start, response.Usage, response.StopReason)
 
 			command := sanitizeCommand(responseText(response))
 			if command == "" {
 				return errors.New("model returned no command")
 			}
+			log.Debug("shell: command generated", "command", command)
 			if _, err := fmt.Fprintln(cmd.OutOrStdout(), command); err != nil {
 				return err
 			}
 			if !stdioIsTTY() {
+				log.Debug("shell: not a terminal, printing the command only")
 				return nil // piped or scripted: stdout carries the command, nothing else
 			}
-			return offerAction(cmd.InOrStdin(), cmd.ErrOrStderr(), command)
+			return offerAction(log, cmd.InOrStdin(), cmd.ErrOrStderr(), command)
 		},
 	}
 }
 
 // offerAction lets an interactive user act on the generated command. The
 // prompt lives on stderr so stdout stays pure even in odd redirections.
-func offerAction(in io.Reader, prompt io.Writer, command string) error {
+func offerAction(log *slog.Logger, in io.Reader, prompt io.Writer, command string) error {
 	fmt.Fprint(prompt, "copy, run, or nothing? [C/r/n] ")
 	scanner := bufio.NewScanner(in)
 	answer := ""
@@ -84,14 +93,17 @@ func offerAction(in io.Reader, prompt io.Writer, command string) error {
 	}
 	switch answer {
 	case "", "c", "copy":
+		log.Info("shell: action", "action", "copy")
 		if err := copyToClipboard(command); err != nil {
 			return err
 		}
 		fmt.Fprintln(prompt, "copied")
 		return nil
 	case "r", "run":
+		log.Info("shell: action", "action", "run", "command", command)
 		return runCommand(command)
 	default:
+		log.Info("shell: action", "action", "none")
 		return nil
 	}
 }

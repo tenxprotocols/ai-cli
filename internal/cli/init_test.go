@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,7 +37,7 @@ func TestInit_FreshConfigWithDetectedKey(t *testing.T) {
 	clearProviderEnv(t)
 	t.Setenv("ANTHROPIC_API_KEY", "sk-ant")
 	restore := ollamaProbe
-	ollamaProbe = func() (string, bool) { return "", false }
+	ollamaProbe = func(*http.Client) (string, bool) { return "", false }
 	defer func() { ollamaProbe = restore }()
 
 	path := filepath.Join(t.TempDir(), "sub", "config.toml") // parent dir must be created
@@ -58,7 +59,7 @@ func TestInit_FreshConfigWithDetectedKey(t *testing.T) {
 func TestInit_CustomCompatEndpoint(t *testing.T) {
 	clearProviderEnv(t)
 	restore := ollamaProbe
-	ollamaProbe = func() (string, bool) { return "", false }
+	ollamaProbe = func(*http.Client) (string, bool) { return "", false }
 	defer func() { ollamaProbe = restore }()
 
 	path := filepath.Join(t.TempDir(), "config.toml")
@@ -85,7 +86,7 @@ func TestInit_CustomCompatEndpoint(t *testing.T) {
 func TestInit_MergesIntoExistingConfig(t *testing.T) {
 	clearProviderEnv(t)
 	restore := ollamaProbe
-	ollamaProbe = func() (string, bool) { return "llama3.1:8b", true }
+	ollamaProbe = func(*http.Client) (string, bool) { return "llama3.1:8b", true }
 	defer func() { ollamaProbe = restore }()
 
 	path := writeTempConfig(t, fakeConfig) // has provider "fake" + profile "default"

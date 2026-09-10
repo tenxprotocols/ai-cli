@@ -135,7 +135,7 @@ func (t *Transport) headerAttrs(header http.Header) []any {
 		key := strings.ToLower(name)
 		value := strings.Join(header[name], ", ")
 		if !t.Secrets && sensitiveHeaders[key] {
-			value = redactSecret(value)
+			value = Redact(value)
 		}
 		attrs = append(attrs, key, value)
 	}
@@ -157,16 +157,16 @@ func (t *Transport) redactURL(target *url.URL) string {
 		if !found || !sensitiveParams[strings.ToLower(name)] {
 			continue
 		}
-		pairs[i] = name + "=" + redactSecret(value)
+		pairs[i] = name + "=" + Redact(value)
 	}
 	clone := *target
 	clone.RawQuery = strings.Join(pairs, "&")
 	return clone.String()
 }
 
-// redactSecret keeps the last four characters so a key can be identified
+// Redact keeps the last four characters so a credential can be identified
 // without being disclosed, matching `ai config show`.
-func redactSecret(value string) string {
+func Redact(value string) string {
 	if len(value) <= 4 {
 		return "••••"
 	}

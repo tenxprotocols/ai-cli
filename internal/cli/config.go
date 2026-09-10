@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tenxprotocols/ai-cli/internal/config"
+	"github.com/tenxprotocols/ai-cli/internal/logging"
 )
 
 func newConfigCmd(flags *GlobalFlags) *cobra.Command {
@@ -102,7 +103,8 @@ func newConfigSetCmd(flags *GlobalFlags) *cobra.Command {
 		Use:   "set <dotted.key> <value>",
 		Short: "Set a config value",
 		Args:  cobra.ExactArgs(2),
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			log := logging.FromContext(cmd.Context())
 			p, err := resolveConfigPath(flags.ConfigPath)
 			if err != nil {
 				return err
@@ -114,7 +116,11 @@ func newConfigSetCmd(flags *GlobalFlags) *cobra.Command {
 			if err := config.SetKey(&f, args[0], args[1]); err != nil {
 				return err
 			}
-			return config.SaveFile(p, f)
+			if err := config.SaveFile(p, f); err != nil {
+				return err
+			}
+			log.Info("config: wrote", "path", p, "key", args[0])
+			return nil
 		},
 	}
 }
