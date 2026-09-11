@@ -1,4 +1,25 @@
+# Tool versions for local development and CI. CI installs exactly these, so
+# `mise install && task ci` reproduces a pipeline run on your machine.
+#
+# Versions are pinned rather than floating on "latest" so a new linter release
+# can't turn CI red without a commit. mise.lock records the exact resolution;
+# commit both files together. mise only maintains the lockfile if it already
+# exists, so it is committed even when empty.
+#
+# CI installs with --locked, so the lockfile must carry an entry for every
+# platform the pipeline runs on. After changing a version, run:
+#
+#     mise upgrade --bump   # or edit a version below
+#     mise lock --platform linux-x64,macos-arm64
+#
+# The weekly mise-bump workflow does both and opens a pull request.
+
 [tools]
-go = "latest"
-golangci-lint = "latest"
-"aqua:go-task/task" = "latest"
+# Keep in step with the go directive in go.mod.
+go = "1.26.1"
+golangci-lint = "2.11.4"
+goreleaser = "2"
+"aqua:go-task/task" = "3"
+
+[settings]
+lockfile = true

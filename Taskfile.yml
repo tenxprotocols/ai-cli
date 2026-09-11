@@ -38,6 +38,75 @@ tasks:
     cmds:
       - golangci-lint run
 
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  check:fmt:
+    desc: Fail if any Go file needs formatting (the read-only half of `fmt`)
+    cmds:
+      - |
+        unformatted="$(gofmt -l -s .)"
+        if [ -n "$unformatted" ]; then
+          echo "These files need 'task fmt':" >&2
+          echo "$unformatted" >&2
+          exit 1
+        fi
+
+  release:check:
+    desc: Validate .goreleaser.yml without building anything
+    cmds:
+      - goreleaser check
+
+  build:snapshot:
+    desc: Build release archives into dist/ without publishing
+    cmds:
+      - goreleaser release --snapshot --clean --skip=publish
+
+  smoke:
+    desc: Run binary contract checks (AI_BIN=path, default ./bin/ai)
+    cmds:
+      - ./scripts/smoke.sh {{.AI_BIN | default "./bin/ai"}}
+
+  smoke:dist:
+    desc: Smoke test the host binary produced by build:snapshot
+    cmds:
+      - |
+        # dist/ holds every target, so pick the one this machine can run.
+        binary="$(find dist -type f -name ai -path "*_$(go env GOOS)_$(go env GOARCH)*" | head -n 1)"
+        if [ -z "$binary" ]; then
+          echo "no $(go env GOOS)/$(go env GOARCH) binary in dist/ — run 'task build:snapshot' first" >&2
+          exit 1
+        fi
+        ./scripts/smoke.sh "$binary"
+
+  smoke:archive:
+    desc: Unpack a release archive (ARCHIVE=path) and smoke test the binary inside
+    requires:
+      vars: [ARCHIVE]
+    cmds:
+      - rm -rf ./tmp/smoke
+      - mkdir -p ./tmp/smoke
+      - tar -xzf {{.ARCHIVE}} -C ./tmp/smoke
+      - ./scripts/smoke.sh ./tmp/smoke/ai
+
+  release:
+    desc: Build and publish a release — CI runs this on a version tag
+    cmds:
+      - goreleaser release --clean
+
+  ci:
+    desc: Everything CI runs, in CI's order
+    cmds:
+      - task: check:fmt
+      - task: vet
+      - task: lint
+      - task: release:check
+      - task: test
+      - task: build:snapshot
+      - task: smoke:dist
+
   fmt:
     desc: Format Go files
     cmds:

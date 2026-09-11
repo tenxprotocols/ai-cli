@@ -1,0 +1,138 @@
+# The gate every change passes, called by both ci.yml (pull requests, main)
+# and cd.yml (version tags) so a release cannot ship anything a pull request
+# would have rejected.
+#
+# Every job body is a `task` call: mise installs the pinned tools, task runs
+# the same commands you run locally. `mise install && task ci` reproduces this
+# whole file on a laptop.
+name: verify
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  # Pinning the lint cache into the workspace keeps its path, and the cache
+  # key, identical on every runner OS.
+  GOLANGCI_LINT_CACHE: ${{ github.workspace }}/.cache/golangci-lint
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      # golangci-lint's cache is largely a wrapper around the Go build cache,
+      # so both are restored together. The restore-keys prefix means a go.sum
+      # change still gets a warm cache instead of starting cold.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ github.workspace }}/.cache/golangci-lint
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: lint-${{ runner.os }}-${{ hashFiles('mise.lock') }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            lint-${{ runner.os }}-${{ hashFiles('mise.lock') }}-
+
+      - run: task check:fmt
+      - run: task vet
+      - run: task lint
+      - run: task release:check
+
+  test:
+    name: test (${{ matrix.os }})
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      # mise supplies Go, so there is no setup-go caching the module and build
+      # caches for us; without this every run recompiles from cold.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+          key: test-${{ runner.os }}-${{ hashFiles('mise.lock') }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            test-${{ runner.os }}-${{ hashFiles('mise.lock') }}-
+
+      - run: task test
+
+  build:
+    name: build
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # GoReleaser derives the snapshot version from tags and history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: build-${{ runner.os }}-${{ hashFiles('mise.lock') }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            build-${{ runner.os }}-${{ hashFiles('mise.lock') }}-
+
+      - run: task build:snapshot
+
+      # The archives and checksums are the exact shape a release ships, so a
+      # reviewer can download them from the pull request and run the binary.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ai-snapshot
+          path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke:
+    name: smoke
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: ai-snapshot
+          path: dist
+
+      # Verify the published checksums cover what we are about to run, then
+      # exercise the binary that was actually built rather than a fresh one.
+      # SHA256SUMS lists bare file names, so this has to run from inside dist/.
+      - name: Verify checksums
+        run: sha256sum --check SHA256SUMS
+        working-directory: dist
+
+      - name: Smoke test the linux amd64 archive
+        run: task smoke:archive ARCHIVE="$(ls dist/*linux-amd64.tar.gz)"

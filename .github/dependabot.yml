@@ -1,0 +1,24 @@
+# Dependabot has no mise ecosystem, so it covers actions and Go modules only.
+# The tools pinned in mise.toml are bumped by .github/workflows/mise-bump.yml.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'ci'
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'build'
+    groups:
+      go-dependencies:
+        patterns: ['*']

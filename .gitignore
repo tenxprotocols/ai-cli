@@ -1,6 +1,8 @@
 /bin/
 /dist/
 /.task/
+/tmp/
+/.cache/
 *.test
 *.out
 .DS_Store
