@@ -1,0 +1,59 @@
+# Dependabot cannot read mise.toml, so this does that half: once a week it
+# bumps the pinned tool versions and opens a pull request, which then has to
+# pass the same verify gate as any other change.
+name: mise-bump
+
+on:
+  schedule:
+    # Mondays, 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: mise-bump
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    name: Bump pinned tools
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      # --bump rewrites the versions in mise.toml, rather than staying inside
+      # the range they already pin.
+      - name: Upgrade tools
+        run: mise upgrade --bump
+
+      - name: Open a pull request if anything moved
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: chore/mise-bump
+        run: |
+          if git diff --quiet -- mise.toml mise.lock; then
+            echo "pinned tools are already current"
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git switch -C "$BRANCH"
+          git add mise.toml mise.lock
+          git commit -m 'ci: bump pinned tool versions'
+          git push --force-with-lease origin "$BRANCH"
+
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title 'ci: bump pinned tool versions' \
+              --body 'Weekly `mise upgrade --bump`. Verify must pass before this merges — a red check here means a new tool version disagrees with the codebase.'
+          fi
