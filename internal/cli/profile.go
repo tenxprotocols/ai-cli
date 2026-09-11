@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tenxprotocols/ai-cli/internal/config"
+	"github.com/tenxprotocols/ai-cli/internal/logging"
 )
 
 func newProfileCmd(flags *GlobalFlags) *cobra.Command {
@@ -100,7 +101,7 @@ func newProfileUseCmd(flags *GlobalFlags) *cobra.Command {
 		Use:   "use <name>",
 		Short: "Set the default profile",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			path, file, err := loadConfig(flags)
 			if err != nil {
 				return err
@@ -109,7 +110,11 @@ func newProfileUseCmd(flags *GlobalFlags) *cobra.Command {
 				return fmt.Errorf("%w: %s", config.ErrUnknownProfile, args[0])
 			}
 			file.DefaultProfile = args[0]
-			return config.SaveFile(path, file)
+			if err := config.SaveFile(path, file); err != nil {
+				return err
+			}
+			logging.FromContext(cmd.Context()).Info("config: wrote", "path", path)
+			return nil
 		},
 	}
 }
@@ -120,7 +125,7 @@ func newProfileCreateCmd(flags *GlobalFlags) *cobra.Command {
 		Use:   "create <name>",
 		Short: "Create a profile",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			path, file, err := loadConfig(flags)
 			if err != nil {
 				return err
@@ -150,7 +155,11 @@ func newProfileCreateCmd(flags *GlobalFlags) *cobra.Command {
 				return fmt.Errorf("profile needs --provider and --model (or --from)")
 			}
 			file.Profiles[name] = profile
-			return config.SaveFile(path, file)
+			if err := config.SaveFile(path, file); err != nil {
+				return err
+			}
+			logging.FromContext(cmd.Context()).Info("config: wrote", "path", path)
+			return nil
 		},
 	}
 	create.Flags().StringVar(&from, "from", "", "copy fields from an existing profile")
@@ -166,7 +175,7 @@ func newProfileRmCmd(flags *GlobalFlags) *cobra.Command {
 		Use:   "rm <name>",
 		Short: "Remove a profile",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			path, file, err := loadConfig(flags)
 			if err != nil {
 				return err
@@ -179,7 +188,11 @@ func newProfileRmCmd(flags *GlobalFlags) *cobra.Command {
 				return fmt.Errorf("%q is the default profile; use --force", name)
 			}
 			delete(file.Profiles, name)
-			return config.SaveFile(path, file)
+			if err := config.SaveFile(path, file); err != nil {
+				return err
+			}
+			logging.FromContext(cmd.Context()).Info("config: wrote", "path", path)
+			return nil
 		},
 	}
 	remove.Flags().BoolVar(&force, "force", false, "remove even if it is the default profile")

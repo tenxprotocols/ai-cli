@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"net/http"
 	"path/filepath"
 	"testing"
 
@@ -63,7 +64,7 @@ func TestZeroConfig_ModelFlagStillWins(t *testing.T) {
 func TestZeroConfig_OllamaFallback(t *testing.T) {
 	clearProviderEnv(t)
 	restore := ollamaProbe
-	ollamaProbe = func() (string, bool) { return "llama3.1:8b", true }
+	ollamaProbe = func(*http.Client) (string, bool) { return "llama3.1:8b", true }
 	defer func() { ollamaProbe = restore }()
 	fake := &scriptedProvider{name: "ollama", reply: "local"}
 
@@ -76,7 +77,7 @@ func TestZeroConfig_OllamaFallback(t *testing.T) {
 func TestZeroConfig_HelpfulErrorWhenNothingFound(t *testing.T) {
 	clearProviderEnv(t)
 	restore := ollamaProbe
-	ollamaProbe = func() (string, bool) { return "", false }
+	ollamaProbe = func(*http.Client) (string, bool) { return "", false }
 	defer func() { ollamaProbe = restore }()
 
 	_, err := runWithoutConfig(t, nil, "ask", "hi")

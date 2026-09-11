@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,7 @@ func TestZeroConfig_FirstKnownKeyWins(t *testing.T) {
 		"OPENAI_API_KEY":    "sk-openai",
 		"ANTHROPIC_API_KEY": "sk-ant",
 	})
-	resolved, ok := ZeroConfig(Overrides{}, env, noOllama)
+	resolved, ok := ZeroConfig(context.Background(), Overrides{}, env, noOllama)
 	require.True(t, ok)
 	assert.Equal(t, "anthropic", resolved.ProviderName)
 	assert.Equal(t, "sk-ant", resolved.APIKey)
@@ -30,7 +31,7 @@ func TestZeroConfig_FirstKnownKeyWins(t *testing.T) {
 }
 
 func TestZeroConfig_FallsBackToOllama(t *testing.T) {
-	resolved, ok := ZeroConfig(Overrides{}, envWith(nil), func() (string, bool) { return "llama3.1:8b", true })
+	resolved, ok := ZeroConfig(context.Background(), Overrides{}, envWith(nil), func() (string, bool) { return "llama3.1:8b", true })
 	require.True(t, ok)
 	assert.Equal(t, "ollama", resolved.ProviderName)
 	assert.Equal(t, "openai-compat", resolved.ProviderType)
@@ -40,13 +41,13 @@ func TestZeroConfig_FallsBackToOllama(t *testing.T) {
 }
 
 func TestZeroConfig_NothingAvailable(t *testing.T) {
-	_, ok := ZeroConfig(Overrides{}, envWith(nil), noOllama)
+	_, ok := ZeroConfig(context.Background(), Overrides{}, envWith(nil), noOllama)
 	assert.False(t, ok)
 }
 
 func TestZeroConfig_OverridesStillApply(t *testing.T) {
 	env := envWith(map[string]string{"GEMINI_API_KEY": "g-key"})
-	resolved, ok := ZeroConfig(Overrides{Model: "gemini-2.5-pro", System: "terse"}, env, noOllama)
+	resolved, ok := ZeroConfig(context.Background(), Overrides{Model: "gemini-2.5-pro", System: "terse"}, env, noOllama)
 	require.True(t, ok)
 	assert.Equal(t, "gemini", resolved.ProviderName)
 	assert.Equal(t, "gemini-2.5-pro", resolved.Model)

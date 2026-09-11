@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tenxprotocols/ai-cli/internal/config"
+	"github.com/tenxprotocols/ai-cli/internal/logging"
 	"github.com/tenxprotocols/ai-cli/internal/providers"
 )
 
@@ -57,7 +59,10 @@ func runInit(ctx context.Context, w *wizard, path string, file config.File) erro
 		}
 		options = append(options, typ+note)
 	}
-	ollamaModel, ollamaUp := ollamaProbe()
+	log := logging.FromContext(ctx)
+	ollamaModel, ollamaUp := ollamaProbe(logging.NewClient(
+		&http.Client{Timeout: ollamaProbeTimeout}, log, false))
+	log.Debug("ollama: probe", "running", ollamaUp, "model", ollamaModel)
 	note := "  (not running)"
 	if ollamaUp {
 		note = "  (running)"
@@ -122,6 +127,7 @@ func runInit(ctx context.Context, w *wizard, path string, file config.File) erro
 	if err := config.SaveFile(path, file); err != nil {
 		return err
 	}
+	log.Info("config: wrote", "path", path, "profile", profileName, "provider", name)
 
 	fmt.Fprintf(w.out, "\nWrote %s\n  profile %s = %s / %s\n", path, profileName, name, defaultModel)
 	if apiKey == "" && typ != "openai-compat" {

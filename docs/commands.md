@@ -16,6 +16,48 @@ Available on every subcommand.
 | `--system <text>` | `AI_CLI_SYSTEM` | profile's system | System prompt, inline |
 | `--system-file <path>` | — | — | System prompt from file |
 | `--config <path>` | `AI_CLI_CONFIG` | see configuration.md | Config file location |
+| `--log-level <level>` | `AI_CLI_LOG_LEVEL` | `warn` | `error`, `warn`, `info`, `debug`, or `trace` |
+| `--log-format text\|json` | `AI_CLI_LOG_FORMAT` | `text` | Log record encoding |
+| `--log-file <path>` | `AI_CLI_LOG_FILE` | — | Write logs here instead of stderr (created `0600`) |
+| `--log-secrets` | — | off | Log API keys and `Authorization` headers unredacted |
+
+## Logging
+
+Logs go to **stderr**, so stdout stays pipeable. Nothing is logged below `warn`
+by default. Log flags are read before dispatch and work anywhere on the command
+line — `ai --log-level=debug ask hi` and `ai ask --log-level=debug hi` are
+equivalent — and they are passed through to `ai-<name>` plugins, which also
+inherit `AI_CLI_LOG_LEVEL`.
+
+| Level | What it adds |
+|---|---|
+| `error` | Failures, with the underlying cause (DNS, TLS, timeouts, HTTP status). The one-line `ai: <error>` message on stderr is unaffected by the level. |
+| `warn` | **Default.** Missing API key, response truncated at `max_tokens`. |
+| `info` | One line per milestone: config file loaded, profile/provider/model resolved, token usage and wall time, config writes. |
+| `debug` | The decision trail: dispatch, every resolution step with the source that won, which env var supplied the key, HTTP method/URL/status/duration. |
+| `trace` | The full exchange: request and response headers and bodies, streamed chunk by chunk. |
+
+### Debugging a connection
+
+`--log-level=trace` prints the whole HTTP exchange:
+
+```console
+$ ai --log-level=trace ask hi
++0ms DEBUG http: request method=POST url=https://api.anthropic.com/v1/messages
++0ms TRACE http: request headers anthropic-version=2023-06-01 x-api-key=••••1a2b
++0ms TRACE http: request body body="{\"model\":\"claude-opus-5\",...}"
++1ms DEBUG http: response status=200 dur=412ms
++1ms TRACE http: response body chunk="data: {\"type\":\"message_start\",...}"
+```
+
+Credentials in headers and in `?key=` query parameters are redacted to
+`••••<last4>`, so a trace is safe to paste into an issue. `--log-secrets`
+prints them in full, for when the key itself is the suspect — redaction only
+ever affects the log, never the outbound request.
+
+Response bodies are logged as they are read rather than buffered, so streaming
+still arrives token by token under `trace`. A long trace is easier to read in a
+file: `ai --log-level=trace --log-file=/tmp/ai.log ask hi`.
 
 ## Dispatch
 

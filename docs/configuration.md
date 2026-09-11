@@ -45,6 +45,7 @@ flag  >  AI_CLI_* env  >  public env (API keys only)  >  [commands.<name>]  >  [
 | API key | `providers.<n>.api_key` (discouraged) | `AI_CLI_<NAME>_API_KEY` or `ANTHROPIC_API_KEY` etc. | — |
 | System prompt | `profiles.<p>.system` | `AI_CLI_SYSTEM` | `--system` / `--system-file` |
 | Output format | — | `AI_CLI_FORMAT` | `--format` |
+| Log level | — | `AI_CLI_LOG_LEVEL` | `--log-level` |
 | Different model for one subcommand | `[commands.shell] model = "..."` | — | — |
 
 Minimal working config:
@@ -146,12 +147,15 @@ Note: `ai shell` ignores profile/command `system` values (its built-in prompt do
 | `AI_CLI_MODEL` | `--model` | Model override (verbatim) |
 | `AI_CLI_SYSTEM` | `--system` | System prompt |
 | `AI_CLI_FORMAT` | `--format` | `text`, `json`, or `jsonl` |
+| `AI_CLI_LOG_LEVEL` | `--log-level` | `error`, `warn`, `info`, `debug`, or `trace` |
+| `AI_CLI_LOG_FORMAT` | `--log-format` | `text` or `json` |
+| `AI_CLI_LOG_FILE` | `--log-file` | Log destination; stderr when unset |
 | `AI_CLI_<NAME>_API_KEY` | — | API key for provider block `<name>` |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `GOOGLE_API_KEY` | — | Public-convention key fallbacks |
 | `EDITOR` | — | Used by `ai config edit` (default `vi`) |
 | `SHELL` | — | Tells `ai shell` which shell dialect to target |
 
-Flag-only (no env): `--no-stream`, `--system-file`.
+Flag-only (no env): `--no-stream`, `--system-file`, `--log-secrets`.
 File-only (no env or flag): `temperature`, `max_tokens`, `[commands.*]` blocks, provider `base_url`/`type`.
 
 ### Editing from the CLI

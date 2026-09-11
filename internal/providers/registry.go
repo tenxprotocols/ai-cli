@@ -3,6 +3,7 @@ package providers
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 	"sync"
 )
@@ -19,6 +20,11 @@ type Config struct {
 	APIKey  string
 	BaseURL string            // for openai-compat
 	Extra   map[string]string // future-proofing for provider-specific config
+
+	// HTTPClient issues every request this provider makes. The CLI supplies
+	// one whose transport logs the exchange; nil falls back to
+	// http.DefaultClient.
+	HTTPClient *http.Client
 }
 
 // Constructor builds a Provider from a Config.

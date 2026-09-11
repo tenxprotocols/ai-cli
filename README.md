@@ -50,9 +50,12 @@ model    = "claude-sonnet-4-6"
 git diff | ai ask write a commit message for this
 ai shell find all files larger than 500MB created in the last week
 ai --format json --no-stream ask capital of france     # for scripts and agents
+ai --log-level trace ask hi                            # see the whole HTTP exchange
 ```
 
 Unix-first: pipes in, plain text out, `--format json|jsonl` for machines, meaningful exit codes, and git-style dispatch (`ai-shell` symlinks; unknown subcommands run `ai-<name>` from `$PATH`).
+
+Something not working? `--log-level` takes `error|warn|info|debug|trace`; `trace` dumps every HTTP request and response, with credentials redacted. See [Logging](docs/commands.md#logging).
 
 ## Docs
 

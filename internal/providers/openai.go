@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 // openAI speaks the OpenAI chat-completions protocol. It backs the openai,
@@ -13,6 +14,7 @@ type openAI struct {
 	name    string
 	baseURL string
 	apiKey  string
+	client  *http.Client
 }
 
 func newOpenAI(cfg Config) (Provider, error) {
@@ -29,7 +31,7 @@ func newOpenAI(cfg Config) (Provider, error) {
 			return nil, fmt.Errorf("provider %q: base_url is required for type %q", cfg.Name, cfg.Type)
 		}
 	}
-	return &openAI{name: cfg.Name, baseURL: base, apiKey: cfg.APIKey}, nil
+	return &openAI{name: cfg.Name, baseURL: base, apiKey: cfg.APIKey, client: cfg.HTTPClient}, nil
 }
 
 func (o *openAI) Name() string { return o.name }
@@ -62,7 +64,7 @@ func (o *openAI) body(req Request) map[string]any {
 }
 
 func (o *openAI) Complete(ctx context.Context, req Request) (Response, error) {
-	resp, err := send(ctx, "POST", o.baseURL+"/chat/completions", o.headers(), o.body(req))
+	resp, err := send(ctx, o.client, "POST", o.baseURL+"/chat/completions", o.headers(), o.body(req))
 	if err != nil {
 		return Response{}, err
 	}
@@ -96,7 +98,7 @@ func (o *openAI) Stream(ctx context.Context, req Request) (<-chan Chunk, error) 
 	body := o.body(req)
 	body["stream"] = true
 	body["stream_options"] = map[string]any{"include_usage": true}
-	resp, err := send(ctx, "POST", o.baseURL+"/chat/completions", o.headers(), body) //nolint:bodyclose // closed by the streaming goroutine
+	resp, err := send(ctx, o.client, "POST", o.baseURL+"/chat/completions", o.headers(), body) //nolint:bodyclose // closed by the streaming goroutine
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +146,7 @@ func (o *openAI) Stream(ctx context.Context, req Request) (<-chan Chunk, error) 
 }
 
 func (o *openAI) ListModels(ctx context.Context) ([]ModelInfo, error) {
-	resp, err := send(ctx, "GET", o.baseURL+"/models", o.headers(), nil)
+	resp, err := send(ctx, o.client, "GET", o.baseURL+"/models", o.headers(), nil)
 	if err != nil {
 		return nil, err
 	}
