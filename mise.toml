@@ -6,8 +6,13 @@
 # commit both files together. mise only maintains the lockfile if it already
 # exists, so it is committed even when empty.
 #
-# To bump: `mise upgrade --bump` — the weekly mise-bump workflow does exactly
-# that and opens a pull request.
+# CI installs with --locked, so the lockfile must carry an entry for every
+# platform the pipeline runs on. After changing a version, run:
+#
+#     mise upgrade --bump   # or edit a version below
+#     mise lock --platform linux-x64,macos-arm64
+#
+# The weekly mise-bump workflow does both and opens a pull request.
 
 [tools]
 # Keep in step with the go directive in go.mod.

@@ -1,15 +1,23 @@
 [[tools."aqua:go-task/task"]]
 version = "3.50.0"
 backend = "aqua:go-task/task"
+"platforms.linux-x64" = { checksum = "sha256:d449ba85ab85a0769989d78f8b9872938e4ba9347f7f4f925f73d98272a0a655", url = "https://github.com/go-task/task/releases/download/v3.50.0/task_linux_amd64.tar.gz"}
+"platforms.macos-arm64" = { checksum = "sha256:838b7954f227b5e8f798ad83111195aed810cf4f98dfabef4aa77ea065dd74b0", url = "https://github.com/go-task/task/releases/download/v3.50.0/task_darwin_arm64.tar.gz"}
 
 [[tools.go]]
 version = "1.26.1"
 backend = "core:go"
+"platforms.linux-x64" = { checksum = "sha256:031f088e5d955bab8657ede27ad4e3bc5b7c1ba281f05f245bcc304f327c987a", url = "https://dl.google.com/go/go1.26.1.linux-amd64.tar.gz"}
+"platforms.macos-arm64" = { checksum = "sha256:353df43a7811ce284c8938b5f3c7df40b7bfb6f56cb165b150bc40b5e2dd541f", url = "https://dl.google.com/go/go1.26.1.darwin-arm64.tar.gz"}
 
 [[tools.golangci-lint]]
 version = "2.11.4"
 backend = "aqua:golangci/golangci-lint"
+"platforms.linux-x64" = { checksum = "sha256:200c5b7503f67b59a6743ccf32133026c174e272b930ee79aa2aa6f37aca7ef1", url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-linux-amd64.tar.gz"}
+"platforms.macos-arm64" = { checksum = "sha256:02db2a2dae8b26812e53b0688a6f617e3ef1f489790e829ea22862cf76945675", url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-darwin-arm64.tar.gz"}
 
 [[tools.goreleaser]]
 version = "2.18.1"
 backend = "aqua:goreleaser/goreleaser"
+"platforms.linux-x64" = { checksum = "sha256:0c6122af0ad8fd65638889bf7d3757148b2f80eeff9f079682f0655df66ec8e8", url = "https://github.com/goreleaser/goreleaser/releases/download/v2.18.1/goreleaser_Linux_x86_64.tar.gz"}
+"platforms.macos-arm64" = { checksum = "sha256:d0af1f86c439a59ab06c54c505f66fea1a166093dc91a7c0c8aebe3da1cc13b7", url = "https://github.com/goreleaser/goreleaser/releases/download/v2.18.1/goreleaser_Darwin_all.tar.gz"}
