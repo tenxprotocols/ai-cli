@@ -204,6 +204,60 @@ func TestTransport_LogsTransportErrorAtDefaultLevel(t *testing.T) {
 	assert.Contains(t, out, "url=https://api.anthropic.com/v1/messages")
 }
 
+func TestTransport_ExpectedFailureIsSilentAtDefaultLevel(t *testing.T) {
+	sink, buf := newTestSink(t, Options{Level: LevelWarn})
+	stub := &stubRoundTripper{err: errors.New("dial tcp [::1]:11434: connect: connection refused")}
+	transport := &Transport{Base: stub, Log: sink.Logger(), ExpectedFailure: true}
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:11434/v1/models", nil)
+	require.NoError(t, err)
+	resp, err := transport.RoundTrip(req) //nolint:bodyclose // the request failed; there is no body
+	require.Error(t, err, "the caller still learns the request failed")
+	require.Nil(t, resp)
+
+	assert.Empty(t, buf.String(),
+		"a probe that is allowed to fail must not shout at the default level")
+}
+
+func TestTransport_ExpectedFailureStillVisibleWhenDebugging(t *testing.T) {
+	sink, buf := newTestSink(t, Options{Level: LevelDebug})
+	stub := &stubRoundTripper{err: errors.New("dial tcp [::1]:11434: connect: connection refused")}
+	transport := &Transport{Base: stub, Log: sink.Logger(), ExpectedFailure: true}
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:11434/v1/models", nil)
+	require.NoError(t, err)
+	_, err = transport.RoundTrip(req) //nolint:bodyclose // the request failed; there is no body
+	require.Error(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "DEBUG")
+	assert.NotContains(t, out, "ERROR", "an expected failure is never an error")
+	assert.Contains(t, out, "connection refused")
+	assert.Contains(t, out, "localhost:11434")
+}
+
+func TestNewProbeClient_TreatsFailuresAsExpected(t *testing.T) {
+	sink, _ := newTestSink(t, Options{Level: LevelDebug})
+
+	client := NewProbeClient(&http.Client{Timeout: 300 * time.Millisecond}, sink.Logger(), false)
+
+	assert.Equal(t, 300*time.Millisecond, client.Timeout)
+	transport, ok := client.Transport.(*Transport)
+	require.True(t, ok)
+	assert.True(t, transport.ExpectedFailure)
+}
+
+func TestNewClient_TreatsFailuresAsRealByDefault(t *testing.T) {
+	sink, _ := newTestSink(t, Options{Level: LevelDebug})
+
+	client := NewClient(nil, sink.Logger(), false)
+
+	transport, ok := client.Transport.(*Transport)
+	require.True(t, ok)
+	assert.False(t, transport.ExpectedFailure,
+		"an ordinary provider call failing is a real error")
+}
+
 func TestTransport_StreamsSSEWithoutBuffering(t *testing.T) {
 	release := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

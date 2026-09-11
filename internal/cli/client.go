@@ -50,7 +50,7 @@ func resolveForCall(ctx context.Context, command string, flags *GlobalFlags) (co
 
 	log.Debug("config: no profiles configured, trying zero-config", "path", path)
 	probe := func() (string, bool) {
-		client := logging.NewClient(&http.Client{Timeout: ollamaProbeTimeout}, log, logSecrets(flags))
+		client := logging.NewProbeClient(&http.Client{Timeout: ollamaProbeTimeout}, log, logSecrets(flags))
 		return ollamaProbe(client)
 	}
 	if zero, ok := config.ZeroConfig(ctx, overrides, config.OSEnv, probe); ok {

@@ -54,7 +54,10 @@ func main() {
 	root.SetArgs(resolution.Args)
 	if err := root.ExecuteContext(ctx); err != nil {
 		code := cli.ExitCode(err)
-		log.Error("run failed", "err", err, "exit", code)
+		// The message below is the user-facing report. This record only adds
+		// the structured detail that message drops, so it belongs at debug
+		// rather than doubling the failure at the default level.
+		log.Debug("run failed", "err", err, "exit", code)
 		fmt.Fprintf(os.Stderr, "ai: %v\n", err)
 		os.Exit(code)
 	}

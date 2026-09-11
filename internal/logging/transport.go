@@ -41,16 +41,38 @@ type Transport struct {
 	Base    http.RoundTripper // nil uses http.DefaultTransport
 	Log     *slog.Logger      // nil discards
 	Secrets bool              // true logs credentials unredacted
+
+	// ExpectedFailure marks requests whose failure is an answer rather than a
+	// problem — asking whether a local Ollama is running, say. Those log at
+	// debug, so a first run with nothing configured stays quiet, while a real
+	// provider call that fails still reports at error.
+	ExpectedFailure bool
 }
 
 // NewClient copies base — or starts from a zero client — and wraps whatever
 // transport it had in a logging one.
 func NewClient(base *http.Client, log *slog.Logger, secrets bool) *http.Client {
+	return newClient(base, log, secrets, false)
+}
+
+// NewProbeClient is NewClient for requests that are allowed to fail: the
+// caller is asking a question, and "no" arrives as a connection error. Those
+// failures log at debug rather than error.
+func NewProbeClient(base *http.Client, log *slog.Logger, secrets bool) *http.Client {
+	return newClient(base, log, secrets, true)
+}
+
+func newClient(base *http.Client, log *slog.Logger, secrets, expectedFailure bool) *http.Client {
 	client := &http.Client{}
 	if base != nil {
 		*client = *base
 	}
-	client.Transport = &Transport{Base: client.Transport, Log: log, Secrets: secrets}
+	client.Transport = &Transport{
+		Base:            client.Transport,
+		Log:             log,
+		Secrets:         secrets,
+		ExpectedFailure: expectedFailure,
+	}
 	return client
 }
 
@@ -83,7 +105,11 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := base.RoundTrip(req)
 	elapsed := time.Since(start).Round(time.Millisecond)
 	if err != nil {
-		log.Error("http: request failed",
+		level, message := LevelError, "http: request failed"
+		if t.ExpectedFailure {
+			level, message = LevelDebug, "http: probe failed"
+		}
+		log.Log(ctx, level, message,
 			"method", req.Method, "url", loggedURL, "dur", elapsed.String(), "err", err)
 		return nil, err
 	}

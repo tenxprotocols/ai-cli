@@ -60,7 +60,7 @@ func runInit(ctx context.Context, w *wizard, path string, file config.File) erro
 		options = append(options, typ+note)
 	}
 	log := logging.FromContext(ctx)
-	ollamaModel, ollamaUp := ollamaProbe(logging.NewClient(
+	ollamaModel, ollamaUp := ollamaProbe(logging.NewProbeClient(
 		&http.Client{Timeout: ollamaProbeTimeout}, log, false))
 	log.Debug("ollama: probe", "running", ollamaUp, "model", ollamaModel)
 	note := "  (not running)"
